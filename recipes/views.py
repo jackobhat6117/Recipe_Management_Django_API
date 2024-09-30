@@ -9,6 +9,8 @@ from rest_framework.exceptions import NotFound
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django.contrib.auth.models import User
+from rest_framework.filters import SearchFilter, OrderingFilter
+
 
 
 class UserCreateView(generics.ListCreateAPIView):
@@ -116,8 +118,14 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
 class RecipeListCreateView(generics.ListCreateAPIView):
     serializer_class = RecipeSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['category', 'ingredients']
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]  
+    filterset_fields = ['category', 'ingredients']  
+    search_fields = ['title', 'category', 'ingredients', 'preparation_time']
+    ordering_fields = ['cooking_time', 'preparation_time', 'servings']
+    ordering = ['created_at']  
+    
+
+
 
     @swagger_auto_schema(
         operation_description="Get a list of recipes or create a new recipe",
@@ -130,10 +138,27 @@ class RecipeListCreateView(generics.ListCreateAPIView):
                 type=openapi.TYPE_STRING,
                 required=True,
             ),
+            openapi.Parameter(
+                'search',
+                openapi.IN_QUERY,
+                description="Search recipes by title, description, or ingredients",
+                type=openapi.TYPE_STRING,
+                required=False,
+            ),
+            openapi.Parameter(
+                'ordering',
+                openapi.IN_QUERY,
+                description="Order recipes by created_at, title, or category",
+                type=openapi.TYPE_STRING,
+                required=False,
+            ),
         ]
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return Recipe.objects.filter(user=self.request.user)
 
     @swagger_auto_schema(
         operation_description="Create a new recipe",
@@ -220,3 +245,131 @@ class RecipeDetailView(generics.RetrieveUpdateDestroyAPIView):
         except Recipe.DoesNotExist:
             raise NotFound(detail="Recipe not found.", code=status.HTTP_400_BAD_REQUEST)
 
+class RecipesByCategoryView(generics.ListAPIView):
+    serializer_class = RecipeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+    @swagger_auto_schema(
+        operation_description="Retrieve a recipe by category",
+        responses={200: RecipeSerializer(), 404: 'Not Found'},
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Bearer token",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ]
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+
+    
+
+    def get_queryset(self):
+        category = self.kwargs['category']
+        queryset = Recipe.objects.filter(category=category)
+        if not queryset.exists():
+            raise NotFound(detail="No recipes found in this category.", code=status.HTTP_404_NOT_FOUND)
+        return queryset
+
+class RecipesByIngredientView(generics.ListAPIView):
+    serializer_class = RecipeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Retrieve a recipe by ingredient",
+        responses={200: RecipeSerializer(), 404: 'Not Found'},
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Bearer token",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ]
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+
+    def get_queryset(self):
+        ingredient = self.kwargs['ingredient']
+        queryset = Recipe.objects.filter(ingredients__icontains=ingredient)
+        if not queryset.exists():
+            raise NotFound(detail="No recipes found with this ingredient.", code=status.HTTP_404_NOT_FOUND)
+        return queryset
+
+
+class RecipeByMultipleIngredientView(generics.ListAPIView):
+    serializer_class = RecipeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['category', 'preparation_time']
+
+    @swagger_auto_schema(
+        operation_description="Search for recipes by title, category, ingredients, or preparation time. "
+                              "Filter by multiple ingredients with comma-separated values.",
+        manual_parameters=[
+             openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Bearer token",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+            openapi.Parameter('title', openapi.IN_QUERY, description="Title search", type=openapi.TYPE_STRING),
+            openapi.Parameter('category', openapi.IN_QUERY, description="Category filter", type=openapi.TYPE_STRING),
+            openapi.Parameter('ingredients', openapi.IN_QUERY, description="Comma-separated list of ingredients", type=openapi.TYPE_STRING),
+            openapi.Parameter('preparation_time', openapi.IN_QUERY, description="Preparation time filter", type=openapi.TYPE_INTEGER),
+            openapi.Parameter('cooking_time', openapi.IN_QUERY, description="Cooking time filter", type=openapi.TYPE_INTEGER),
+            openapi.Parameter('servings', openapi.IN_QUERY, description="Number of servings", type=openapi.TYPE_INTEGER),
+        ],
+        responses={200: RecipeSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    def get_queryset(self):
+        queryset = Recipe.objects.filter(user=self.request.user)
+
+        # Filter by title (optional)
+        title = self.request.query_params.get('title')
+        if title:
+            queryset = queryset.filter(title__icontains=title)
+
+        # Filter by category (optional)
+        category = self.request.query_params.get('category')
+        if category:
+            queryset = queryset.filter(category__icontains=category)
+
+        # Filter by preparation time (optional)
+        preparation_time = self.request.query_params.get('preparation_time')
+        if preparation_time:
+            queryset = queryset.filter(preparation_time__lte=preparation_time)
+
+        # Filter by cooking time (optional)
+        cooking_time = self.request.query_params.get('cooking_time')
+        if cooking_time:
+            queryset = queryset.filter(cooking_time__lte=cooking_time)
+
+        # Filter by servings (optional)
+        servings = self.request.query_params.get('servings')
+        if servings:
+            queryset = queryset.filter(servings__gte=servings)
+
+        # Filter by multiple ingredients (optional)
+        ingredients = self.request.query_params.get('ingredients')
+        if ingredients:
+            ingredient_list = ingredients.split(',')
+            # Filter by each ingredient in the list
+            for ingredient in ingredient_list:
+                queryset = queryset.filter(ingredients__icontains=ingredient.strip())
+
+        return queryset
+
+  
