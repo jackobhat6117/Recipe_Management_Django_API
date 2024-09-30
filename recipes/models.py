@@ -21,7 +21,7 @@ class Recipe(models.Model):
     cooking_time = models.PositiveIntegerField(help_text="Time in minutes")
     servings = models.PositiveIntegerField()
     created_date = models.DateTimeField(auto_now_add=True)
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='recipe')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='recipe')
 
     def __str__(self):
         return self.title
