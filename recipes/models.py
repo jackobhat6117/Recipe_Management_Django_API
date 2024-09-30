@@ -4,11 +4,12 @@ from django.conf import settings
 
 class Recipe(models.Model):
     CATEGORY_CHOICES = [
-       ('Desert', 'Desert'),
+        ('Dessert', 'Dessert'),
         ('Main Course', 'Main Course'),
         ('Breakfast', 'Breakfast'),
         ('vegertrian', 'vegetrian'),
         ('appetizer', 'Appetizer'),
+        ('salad', 'salad'),
         ('drink', 'Drink'),
     ]
     
