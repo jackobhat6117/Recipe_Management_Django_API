@@ -32,6 +32,46 @@ DEBUG = config("DEBUG", cast=bool)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS").split(",")
 
 
+SECURE_SSL_REDIRECT = True  # Redirect all HTTP to HTTPS
+SESSION_COOKIE_SECURE = True  # Send cookies only over HTTPS
+CSRF_COOKIE_SECURE = True  # Send CSRF cookies only over HTTPS
+
+
+
+SECURE_BROWSER_XSS_FILTER = True  # Prevent cross-site scripting (XSS)
+SECURE_CONTENT_TYPE_NOSNIFF = True  # Prevent content sniffing
+X_FRAME_OPTIONS = 'DENY'  # Clickjacking protection
+
+
+SECURE_HSTS_SECONDS = 31536000  # Enable HSTS for 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'error.log'),
+        },
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file', 'console'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
+    },
+}
+
+
 # Application definition
 
 INSTALLED_APPS = [
