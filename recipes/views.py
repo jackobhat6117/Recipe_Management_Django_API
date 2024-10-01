@@ -122,7 +122,7 @@ class RecipeListCreateView(generics.ListCreateAPIView):
     filterset_fields = ['category', 'ingredients']  
     search_fields = ['title', 'category', 'ingredients', 'preparation_time']
     ordering_fields = ['cooking_time', 'preparation_time', 'servings']
-    ordering = ['created_at']  
+    ordering = ['created_date']  
     
 
 
