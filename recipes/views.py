@@ -371,5 +371,6 @@ class RecipeByMultipleIngredientView(generics.ListAPIView):
                 queryset = queryset.filter(ingredients__icontains=ingredient.strip())
 
         return queryset
+    
 
   
