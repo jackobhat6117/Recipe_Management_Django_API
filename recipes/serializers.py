@@ -1,6 +1,6 @@
 from django.forms import ValidationError
 from rest_framework import serializers
-from .models import Recipe
+from .models import Recipe, Rating
 from django.contrib.auth import get_user_model
 
 
@@ -55,3 +55,10 @@ class RecipeSerializer(serializers.ModelSerializer):
         # if not data.get('instructions'):
         #     raise serializers.ValidationError("Instructions are required")
         # return data
+
+class RatingSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Rating
+        fields = '__all__'
+        read_only_fields = ['user', 'viewd_at']
