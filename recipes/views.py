@@ -1,8 +1,8 @@
 from django.shortcuts import render
-from .serializers import UserSerializer, RecipeSerializer
+from .serializers import RatingSerializer, UserSerializer, RecipeSerializer
 from rest_framework import generics, permissions, status, response
 from django.contrib.auth import get_user_model
-from .models import Recipe
+from .models import Rating, Recipe
 from django_filters.rest_framework import DjangoFilterBackend
 from .permissions import IsOwnerOrReadOnly
 from rest_framework.exceptions import NotFound
@@ -10,6 +10,8 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django.contrib.auth.models import User
 from rest_framework.filters import SearchFilter, OrderingFilter
+from django.db import models
+from rest_framework import serializers
 
 
 
@@ -305,7 +307,7 @@ class RecipesByIngredientView(generics.ListAPIView):
         return queryset
 
 
-class RecipeByMultipleIngredientView(generics.ListAPIView):
+class RecipeFilter(generics.ListAPIView):
     serializer_class = RecipeSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
@@ -371,6 +373,89 @@ class RecipeByMultipleIngredientView(generics.ListAPIView):
                 queryset = queryset.filter(ingredients__icontains=ingredient.strip())
 
         return queryset
+
+class RatingCreateView(generics.CreateAPIView):
+    serializer_class = RatingSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(
+    operation_description="Create a rating for a recipe",
+    request_body=RatingSerializer,
+    responses={201: RatingSerializer(), 400: 'Bad Request'},
+    manual_parameters=[
+        openapi.Parameter(
+            'Authorization',
+            openapi.IN_HEADER,
+            description="Bearer token",
+            type=openapi.TYPE_STRING,
+            required=True,
+        ),
+    ]
+)
+
+
+    def perform_create(self, serializer):
+        recipe_id = self.kwargs['recipe_id']  # Extracting recipe_id from URL parameters
+
+        try:
+            recipe = Recipe.objects.get(id=recipe_id)
+        except Recipe.DoesNotExist:
+            raise NotFound(detail="No recipe found with this id.")
+
+        # Check if the user has already rated this recipe
+        if Rating.objects.filter(recipe=recipe, user=self.request.user).exists():
+            raise serializers.ValidationError({"detail": "You have already rated this recipe."})
+
+        # Save the rating with the recipe and user information
+        serializer.save(user=self.request.user, recipe=recipe)
+
+class HighestRatedRecipesView(generics.ListAPIView):
+    serializer_class = RecipeSerializer
+
+    @swagger_auto_schema(
+        operation_description="Retrieve a recipe by ingredient",
+        responses={200: RecipeSerializer(), 404: 'Not Found'},
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Bearer token",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ]
+    )
+
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
     
+    def get_queryset(self):
+        return Recipe.objects.annotate(average_rating=models.Avg('ratings__score')).order_by('-average_rating')[:10]
+
+
 
   
+class MostPopularRecipesView(generics.ListAPIView):
+    serializer_class = RecipeSerializer
+
+
+    @swagger_auto_schema(
+        operation_description="Retrieve a recipe by ingredient",
+        responses={200: RecipeSerializer(), 404: 'Not Found'},
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Bearer token",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ]
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return Recipe.objects.annotate(total_reviews=models.Count('ratings')).order_by('-total_reviews')[:10]
+
+
