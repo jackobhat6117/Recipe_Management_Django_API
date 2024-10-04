@@ -1,6 +1,5 @@
 from django.urls import path
-from .views import RecipeListCreateView, RecipeDetailView, UserCreateView, UserDetailView, RecipesByCategoryView, RecipesByIngredientView, RecipeByMultipleIngredientView, RatingCreateView, PopularRecipesView
-
+from .views import HighestRatedRecipesView, MostPopularRecipesView, RecipeListCreateView, RecipeDetailView, UserCreateView, UserDetailView, RecipesByCategoryView, RecipesByIngredientView,RatingCreateView, RecipeFilter, RatingCreateView
 
 urlpatterns = [
     path("user/", UserCreateView.as_view(), name = 'user-create' ),
@@ -9,8 +8,8 @@ urlpatterns = [
     path("recipes/<int:pk>/", RecipeDetailView.as_view(), name = 'recipe-detail'),
     path('recipes/category/<str:category>/', RecipesByCategoryView.as_view(), name='recipe-by-category'),
     path('recipes/ingredient/<str:ingredient>/', RecipesByIngredientView.as_view(), name="recipe-by-ingredient"),
-    path('recipes/filter/', RecipeByMultipleIngredientView.as_view(), name='recipe-filter'),
-    path('recipes/<int:pk>/ratings/', RatingCreateView.as_view(), name="create-rating"),
-    path('recipes/popular/', PopularRecipesView.as_view(), name='popular-recipes')
-
+    path('recipes/filter/', RecipeFilter.as_view(), name='recipe-filter'),
+    path('recipes/<int:recipe_id>/rate/', RatingCreateView.as_view(), name='rate-recipe'),
+    path('recipes/highest-rated/', HighestRatedRecipesView.as_view(), name='highest-rated-recipes'),
+    path('recipes/most-popular/', MostPopularRecipesView.as_view(), name='most-popular-recipes'),
 ]

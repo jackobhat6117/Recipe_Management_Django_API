@@ -4,6 +4,7 @@ from .models import Recipe, Rating
 from django.contrib.auth import get_user_model
 
 
+
 User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -56,9 +57,10 @@ class RecipeSerializer(serializers.ModelSerializer):
         #     raise serializers.ValidationError("Instructions are required")
         # return data
 
-class RatingSerializer(serializers.ModelSerializer):
 
+
+class RatingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Rating
         fields = '__all__'
-        read_only_fields = ['user', 'viewd_at']
+        read_only_fields = ['user', 'created_at']
